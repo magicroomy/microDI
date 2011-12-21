@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<micro-di>
+	<instance name="mybean" classname="de.empic.demojar.C2" />
+</micro-di>
