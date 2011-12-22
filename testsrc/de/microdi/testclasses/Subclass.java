@@ -16,12 +16,18 @@ public class Subclass
 
    @Inject 
    SubSubclass subsubclass2;
+   
+   @Inject 
+   AnInterface anInterface ;
 
    
    @PostConstruct
    public void post()
    {
       System.out.println("Postconstruct " + this.getClass().getName());
+      
+      System.err.println("Interface class is : "+ anInterface.getClass().getName());
+      
    }
 
    

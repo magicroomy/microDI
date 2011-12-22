@@ -23,6 +23,7 @@ import de.microdi.annotations.Component.TYPE;
 import de.microdi.annotations.Inject;
 import de.microdi.config.Instanceconfig;
 import de.microdi.config.MicroDIConfig;
+import de.microdi.config.ParsedComponent;
 
 public class DIRepository
 {
@@ -73,7 +74,6 @@ public class DIRepository
          InputStream is = configURL.openStream() ;
       } catch (IOException e)
       {
-         // TODO Auto-generated catch block
          e.printStackTrace();
          System.exit(2) ;
       }
@@ -102,7 +102,6 @@ public class DIRepository
          
       } catch (Exception e)
       {
-         // TODO Auto-generated catch block
          e.printStackTrace();
          System.exit(2); 
       }
@@ -110,20 +109,39 @@ public class DIRepository
    
    private void processConfig(MicroDIConfig config)
    {
-      for (Instanceconfig currInstance : config.getInstances())
+      if ( config.getInstances() != null )
       {
-         Class<?> instanceClass = null ;
-         try
+         for (Instanceconfig currInstance : config.getInstances())
          {
-            instanceClass = Class.forName(currInstance.getClassname());
-         } catch (ClassNotFoundException e)
-         {
-            System.err.println("Class " + currInstance.getClassname() + " not in Classpath");
-            System.exit(1);
+            Class<?> instanceClass = null ;
+            try
+            {
+               instanceClass = Class.forName(currInstance.getClassname());
+            } catch (ClassNotFoundException e)
+            {
+               System.err.println("Class " + currInstance.getClassname() + " not in Classpath");
+               System.exit(1);
+            }
+            
+            logger.fine("Stored " + currInstance.getName() + " as " + currInstance.getClassname());
+            componentByName.put(currInstance.getName(), instanceClass) ;
          }
-         
-         logger.fine("Stored " + currInstance.getName() + " as " + currInstance.getClassname());
-         componentByName.put(currInstance.getName(), instanceClass) ;
+      }
+      if ( config.getParsedComponents() != null )
+      {
+         for ( ParsedComponent currComponent : config.getParsedComponents())
+         {
+            try
+            {
+               scanClass(currComponent.getClassname()) ;
+            } 
+            catch (Exception e)
+            {
+               System.err.println("Trouble in scanning " + currComponent.getClassname());
+               e.printStackTrace();
+               System.exit(2) ;
+            }
+         }
       }
       
    }
@@ -140,6 +158,9 @@ public class DIRepository
             URL currURL = urls.nextElement() ;
             String urlText = currURL.toString();
             logger.fine("Scan " + currURL + " for annotated classes") ;
+            
+            System.err.println("Scan " + currURL + " for annotated classes");
+            
             if ( urlText.startsWith("jar:file") )
             {
                //jar:file:/empic-client/microDI.jar!/META-INF/microDI.xml
@@ -162,8 +183,8 @@ public class DIRepository
          }
       } catch (IOException e)
       {
-         // TODO Auto-generated catch block
          e.printStackTrace();
+         System.exit(2) ;
       }
    }
 
@@ -204,16 +225,25 @@ public class DIRepository
          }
       } catch (IOException e)
       {
-         // TODO Auto-generated catch block
          e.printStackTrace();
-         System.exit(3) ;
+         System.exit(2) ;
       }
    }
    private void scanClass(String classname)
    {
       try
       {
-         Class<?> testClass = Class.forName(classname);
+         Class<?> testClass;
+         try
+         {
+            testClass = Class.forName(classname);
+         } catch (Throwable e)
+         {
+            System.err.println("Trouble scanning with class " + classname );
+            System.exit(1);
+
+            return ;
+         }
          Component compAnno = (Component)testClass.getAnnotation(Component.class) ;
          if ( compAnno != null )
 
@@ -245,12 +275,12 @@ public class DIRepository
          }
       } catch (Exception e)
       {
-         // TODO Auto-generated catch block
          e.printStackTrace();
+         System.exit(2) ;
       } 
    }
 
-   public Object getInstance(String instanceName, Class fallBack)
+   public Object getInstance(String instanceName, Class<?> fallBack)
    {
       Class<?> classToLoad = componentByName.get(instanceName); 
       if ( classToLoad == null )
@@ -260,17 +290,7 @@ public class DIRepository
       return getInstance(classToLoad) ;
    }
    
-   /**
-    *    public <T> T prepare( Class<T> proxyInterface, Object bean)
-   {
-      T proxy = (T) Proxy.newProxyInstance(this.getClass().getClassLoader(), new Class<?>[]{ proxyInterface }, new ParallelInvocationHandler(bean, this)) ;
-      return proxy ;
-   }   * 
-    * @param classToInstantiate
-    * @return
-    */
-   
-   
+   @SuppressWarnings("unchecked")
    public <T> T getInstance(Class<T> classToInstantiate)
    {
       logger.finest("Get Instance of "+ classToInstantiate.getName());
@@ -287,8 +307,9 @@ public class DIRepository
          Component compAnno = (Component)classToInstantiate.getAnnotation(Component.class) ;
          if ( compAnno == null )
          {
-            System.err.println("Class " + classToInstantiate.getName()+ " is not annotated with @Component");
-            System.exit(0) ;
+            logger.info("Class " + classToInstantiate.getName()+ " is not annotated with @Component and will be generated as new") ;
+            // we simple assume that a "new" is required here.
+            result = classToInstantiate.newInstance();
          }
          
          if ( compAnno.type() == TYPE.Singleton)

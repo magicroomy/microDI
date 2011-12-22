@@ -7,7 +7,7 @@ import de.microdi.annotations.Component.TYPE;
 import de.microdi.annotations.Inject;
 
 @Component(value = "ole222ole", type=TYPE.Singleton)
-public class Main
+public class Main implements AnInterface
 {
 
    @Inject(name="oleole")

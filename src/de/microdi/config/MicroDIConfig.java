@@ -14,6 +14,9 @@ public class MicroDIConfig
    @XmlElement(name="instance")
    List<Instanceconfig> instances ;
 
+   @XmlElement(name="parsed-component")
+   List<ParsedComponent> parsedComponents ;
+
    public List<Instanceconfig> getInstances()
    {
       return instances;
@@ -22,6 +25,16 @@ public class MicroDIConfig
    public void setInstances(List<Instanceconfig> instances)
    {
       this.instances = instances;
+   }
+
+   public List<ParsedComponent> getParsedComponents()
+   {
+      return parsedComponents;
+   }
+
+   public void setParsedComponents(List<ParsedComponent> parsedComponents)
+   {
+      this.parsedComponents = parsedComponents;
    }
    
 }
