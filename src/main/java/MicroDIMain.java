@@ -1,5 +1,4 @@
 import de.microdi.DIRepository;
-import de.microdi.testclasses.Main;
 
 public class MicroDIMain
 {
@@ -16,10 +15,8 @@ public class MicroDIMain
    {
       DIRepository repo = DIRepository.init() ;
       repo.scanClasspath();
-      repo.getInstance(Main.class) ;
       
       System.out.println("NEW--------------------------------------");
       
-      repo.getInstance(Main.class).post() ;
    }
 }

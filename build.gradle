@@ -1,0 +1,12 @@
+apply plugin: 'java'
+
+projectName = 'MicroDI'
+sourceCompatibility = 1.5
+version = '0.9'
+
+jar {
+	baseName = projectName 
+    manifest {
+        attributes 'Implementation-Title': 'Micro DI', 'Implementation-Version': version
+    }
+}
