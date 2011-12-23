@@ -14,9 +14,8 @@ public class MicroDIMain
 
    public MicroDIMain()
    {
-      
-      DIRepository repo = DIRepository.init(this.getClass().getResourceAsStream("/microDIconfig.xml")) ;
-      //repo.scanClasspath();
+      DIRepository repo = DIRepository.init() ;
+      repo.scanClasspath();
       repo.getInstance(Main.class) ;
       
       System.out.println("NEW--------------------------------------");

@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <micro-di>
-	<parsed-component classname="de.microdi.testclasses.Main"/>
+	<component classname="de.microdi.testclasses.Main"/>
 </micro-di>

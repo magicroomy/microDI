@@ -23,13 +23,13 @@ import de.microdi.annotations.Component.TYPE;
 import de.microdi.annotations.Inject;
 import de.microdi.config.Instanceconfig;
 import de.microdi.config.MicroDIConfig;
-import de.microdi.config.ParsedComponent;
+import de.microdi.config.ComponentDefinition;
 
 public class DIRepository
 {
-   private Map<String, Class<?>> componentByName = new HashMap<String, Class<?>>() ;
-   private Map<Class<?>, Object> singletonByClass = new HashMap<Class<?>, Object>() ;
-   private Map<Class<?>, Class<?>> interfaceToImplementation = new HashMap<Class<?>, Class<?>>() ;
+   Map<String, Class<?>> componentByName = new HashMap<String, Class<?>>() ;
+   Map<Class<?>, Object> singletonByClass = new HashMap<Class<?>, Object>() ;
+   Map<Class<?>, Class<?>> interfaceToImplementation = new HashMap<Class<?>, Class<?>>() ;
    private Logger logger = Logger.getLogger(DIRepository.class.getName()) ;
 
    private static DIRepository repo ;
@@ -72,7 +72,10 @@ public class DIRepository
       try
       {
          InputStream is = configURL.openStream() ;
-      } catch (IOException e)
+         MicroDIConfig conf = readConfigFromStream( is ) ;
+         processConfig(conf) ;
+      } 
+      catch (IOException e)
       {
          e.printStackTrace();
          System.exit(2) ;
@@ -81,7 +84,8 @@ public class DIRepository
    
    private DIRepository(InputStream is)
    {
-      readConfigFromStream(is) ;
+      MicroDIConfig config = readConfigFromStream(is) ;
+      processConfig(config) ;
    }
    
    private DIRepository(MicroDIConfig config)
@@ -89,7 +93,7 @@ public class DIRepository
       processConfig(config) ;
    }
 
-   private void readConfigFromStream(InputStream is)
+   private MicroDIConfig readConfigFromStream(InputStream is)
    {
       MicroDIConfig config = null ;
       try
@@ -98,13 +102,13 @@ public class DIRepository
          Unmarshaller unmarshaller = ctx.createUnmarshaller() ;
          
          config = (MicroDIConfig)unmarshaller.unmarshal(is) ;
-         processConfig(config) ;
          
       } catch (Exception e)
       {
          e.printStackTrace();
          System.exit(2); 
       }
+      return config ;
    }
    
    private void processConfig(MicroDIConfig config)
@@ -123,13 +127,13 @@ public class DIRepository
                System.exit(1);
             }
             
-            logger.fine("Stored " + currInstance.getName() + " as " + currInstance.getClassname());
-            componentByName.put(currInstance.getName(), instanceClass) ;
+            logger.fine( "Stored " + currInstance.getName() + " as " + currInstance.getClassname() );
+            componentByName.put( currInstance.getName(), instanceClass ) ;
          }
       }
-      if ( config.getParsedComponents() != null )
+      if ( config.getComponentDefinitions() != null )
       {
-         for ( ParsedComponent currComponent : config.getParsedComponents())
+         for ( ComponentDefinition currComponent : config.getComponentDefinitions())
          {
             try
             {
@@ -143,7 +147,6 @@ public class DIRepository
             }
          }
       }
-      
    }
    
    public void scanClasspath()
@@ -157,28 +160,52 @@ public class DIRepository
          {
             URL currURL = urls.nextElement() ;
             String urlText = currURL.toString();
-            logger.fine("Scan " + currURL + " for annotated classes") ;
             
-            System.err.println("Scan " + currURL + " for annotated classes");
+            logger.fine("Check if " + urlText + " has a component configuration") ;
             
-            if ( urlText.startsWith("jar:file") )
+            InputStream is = currURL.openStream();
+            
+            // we try to read a few bytes => if possible => must have content => parse it
+            byte[] testbuffer = new byte[10] ;
+            int read = is.read(testbuffer) ;
+            if ( read > 0 )
             {
-               //jar:file:/empic-client/microDI.jar!/META-INF/microDI.xml
-               String jarPath = urlText.substring("jar:file:/".length(), currURL.toString().length() - "!/META-INF/microDI.xml".length()) ;
-               analyseJar(new JarInputStream(new FileInputStream(jarPath))) ;
+               // config present
+               // reopen the stream. maybe we could have used mark/rest, but it seams not all streams support this.
+               is.close() ;
+               is = currURL.openStream();
+               
+               MicroDIConfig config = readConfigFromStream(is) ;
+               
+               processConfig(config) ;
             }
-            else if ( urlText.startsWith("jar:http") )
+            else 
             {
-               //jar:http://10.81.1.2:8080/empic-client/microDI.jar!/META-INF/microDI.xml
-               String jarPath = urlText.substring("jar:".length(), currURL.toString().length() - "!/META-INF/microDI.xml".length()) ;
-               URL conn = new URL(jarPath) ;
-               analyseJar( new JarInputStream( conn.openStream())) ;
+               logger.fine("Automatically scan " + currURL + " for annotated classes") ;
+               
+               System.err.println("Scan " + currURL + " for annotated classes");
+               
+               if ( urlText.startsWith("jar:file") )
+               {
+                  //jar:file:/empic-client/microDI.jar!/META-INF/microDI.xml
+                  String jarPath = urlText.substring("jar:file:/".length(), currURL.toString().length() - "!/META-INF/microDI.xml".length()) ;
+                  analyseJar(new JarInputStream(new FileInputStream(jarPath))) ;
+               }
+               else if ( urlText.startsWith("jar:http") )
+               {
+                  //jar:http://10.81.1.2:8080/empic-client/microDI.jar!/META-INF/microDI.xml
+                  String jarPath = urlText.substring("jar:".length(), currURL.toString().length() - "!/META-INF/microDI.xml".length()) ;
+                  URL conn = new URL(jarPath) ;
+                  analyseJar( new JarInputStream( conn.openStream())) ;
+               }
+               else if ( urlText.startsWith("file") )
+               {
+                  String folder = urlText.substring("file:/".length(), currURL.toString().length() - "/META-INF/microDI.xml".length()) ;
+                  analyseClassFolder(new File(folder),folder) ;
+               }
+               
             }
-            else if ( urlText.startsWith("file") )
-            {
-               String folder = urlText.substring("file:/".length(), currURL.toString().length() - "/META-INF/microDI.xml".length()) ;
-               analyseClassFolder(new File(folder),folder) ;
-            }
+            
             
          }
       } catch (IOException e)
